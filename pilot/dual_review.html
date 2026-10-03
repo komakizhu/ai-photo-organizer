@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>人物预设与双引擎审核 · 本地样本</title>
+<style>
+  :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+  body { margin: 0; background: #f6f7fa; color: #242832; }
+  header { position: sticky; top: 0; z-index: 4; padding: 20px max(24px, calc((100vw - 1240px)/2)); background: #fff; box-shadow: 0 1px 8px #d7dce488; }
+  h1 { margin: 0 0 7px; font-size: 23px; }
+  h2 { margin: 30px 0 12px; font-size: 20px; }
+  .sub, .muted { color: #606a78; }
+  .sub { font-size: 13px; }
+  main { max-width: 1240px; margin: auto; padding: 0 24px 60px; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 22px 0; }
+  .stat, .notice { background: #fff; border-radius: 14px; padding: 14px 18px; box-shadow: 0 1px 5px #d7dce466; }
+  .stat strong { display: block; font-size: 22px; }
+  .notice { line-height: 1.6; border-left: 4px solid #f5ad36; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 22px 0; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 15px; background: #fff; border-radius: 12px; margin: 12px 0; }
+  input[type="text"], select { border: 1px solid #cdd3dd; border-radius: 9px; padding: 9px 10px; font: inherit; min-width: 140px; background: #fff; }
+  .toolbar .muted { font-size: 12px; }
+  .empty { background: #fff; border-radius: 12px; padding: 18px; color: #606a78; }
+  .group-previews { display: flex; height: 112px; background: #e5e7ed; }
+  .group-previews img { flex: 1; min-width: 0; width: 33%; object-fit: cover; }
+  .select-photo { position: absolute; top: 9px; left: 9px; background: #fff; border-radius: 7px; padding: 6px; font-size: 13px; box-shadow: 0 2px 6px #2227; }
+  .select-photo input { width: 17px; height: 17px; vertical-align: middle; }
+  .preset-tags { font-size: 12px; color: #39588d; margin-top: 8px; }
+  .group-input { width: calc(100% - 22px); margin: 8px 0; }
+  details { margin-top: 18px; }
+  summary { cursor: pointer; color: #405b92; padding: 10px 0; }
+  button { border: 1px solid #cdd3dd; background: #fff; color: #293244; border-radius: 9px; padding: 8px 12px; cursor: pointer; font: inherit; }
+  button.active, button:hover { background: #e9efff; border-color: #7995de; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 16px; }
+  .card { background: #fff; border: 1px solid #e1e5ec; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px #d7dce455; }
+  .visual { height: 260px; background: #d8dce4; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .visual img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .body { padding: 13px; }
+  .name { font-size: 13px; overflow-wrap: anywhere; font-weight: 650; }
+  .meta { font-size: 12px; color: #5a6473; margin: 8px 0; line-height: 1.45; }
+  .tag { display: inline-block; font-size: 12px; padding: 3px 7px; border-radius: 6px; background: #eee; margin-top: 7px; }
+  .both { background: #e3f7e8; color: #246538; }
+  .disagreement { background: #fff0da; color: #9a5912; }
+  .neither { background: #eaeafa; color: #5b52a5; }
+  .actions { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+  .actions button { font-size: 12px; padding: 5px 8px; }
+  .actions button.selected { background: #dbe8ff; border-color: #527ed4; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .pair img { width: 100%; height: 150px; object-fit: contain; background: #e5e7ed; }
+  .pair small { overflow-wrap: anywhere; display: block; padding: 2px 5px; }
+  .foot { font-size: 12px; color: #65707d; margin-top: 8px; }
+  #message { position: fixed; bottom: 18px; right: 18px; background: #293244; color: #fff; padding: 8px 12px; border-radius: 8px; display: none; z-index: 9; }
+</style>
+<header><h1>人物预设与双引擎审核</h1><div class="sub">Immich + macOS Vision · 仅本机 40 张样本 · 原图只读</div></header>
+<main>
+  <div id="stats" class="stats"></div>
+  <div class="notice">你已经确认的“同一人”会整理成候选组；只有你按“存为人物预设”后，才会进入虚拟人物文件夹。漏检照片也可以勾选后加入。这里不会移动原图，也不会自动改 Immich 人物；Vision 距离只用于减少提问，不是身份结论。</div>
+  <h2>已确认的同一人组</h2>
+  <div id="groups" class="grid"></div>
+  <h2>人物预设 · 虚拟文件夹</h2>
+  <div id="presets" class="grid"></div>
+  <div class="toolbar">
+    <span id="selectedCount">已选 0 张</span>
+    <input id="presetName" type="text" maxlength="40" placeholder="新预设名称，例如小林" aria-label="新预设名称">
+    <button id="createPreset">新建预设并收录所选</button>
+    <select id="targetPreset" aria-label="已有预设"><option value="">选择已有预设</option></select>
+    <button id="addSelected">加入预设</button>
+    <button id="removeSelected">从预设移除</button>
+    <button id="clearSelected">清空选择</button>
+  </div>
+  <p class="muted">先勾选下方照片，再新建预设或加入已有预设；同一张合照可以进入多个人物预设。只是软件里的分组，不是磁盘文件夹。</p>
+  <h2>照片</h2>
+  <div id="filters" class="filters"></div>
+  <div id="photos" class="grid"></div>
+  <h2>仍需判断的人物候选</h2>
+  <p class="muted">只显示未判断、不同 Immich 组、且 Vision 特征距离小于 0.5 的单脸照片；同一候选组之间最多问一次。0.5 是页面筛选值，不代表达到它就一定是不同人。</p>
+  <div id="pairs" class="grid"></div>
+  <details><summary id="reviewedTitle">查看或修改已做的判断</summary><div id="reviewedPairs" class="grid"></div></details>
+</main><div id="message"></div>
+<script>
+let data, filter = 'all';
+const selected = new Set(), editingPhotos = new Set();
+const $ = id => document.getElementById(id);
+const thumb = id => '/thumb/' + encodeURIComponent(id);
+const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const labels = {all:'全部', disagreement:'检测分歧', neither:'双方未检出', both:'双方同处检出'};
+const choices = {photo:[['has-face','有人'],['no-face','确实无人'],['later','稍后']], pair:[['same','同一人'],['different','不同人'],['later','稍后']]};
+function current(kind, key) { return data.decisions[kind+':'+key]?.value || ''; }
+function buttons(kind, key) {
+  return '<div class="actions">' + choices[kind].map(([value,label]) =>
+    `<button data-kind="${kind}" data-key="${escapeHtml(key)}" data-value="${value}" class="${current(kind,key)===value?'selected':''}">${label}</button>`).join('') + '</div>';
+}
+function previews(assetIds) {
+  return `<div class="group-previews">${assetIds.slice(0,3).map(id=>`<img loading="lazy" src="${thumb(id)}" alt="">`).join('')}</div>`;
+}
+function groupCard(group, index) {
+  const names=group.assetIds.map(id=>data.photos.find(p=>p.id===id)?.name).filter(Boolean);
+  return `<article class="card">${previews(group.assetIds)}<div class="body"><div class="name">已确认同一人 · ${group.assetIds.length} 张</div><div class="meta">${escapeHtml(names.join('、'))}</div>${group.conflict?'<div class="tag disagreement">判断冲突，先复核</div>':`<input class="group-input" data-group-name="${index}" maxlength="40" value="人物 ${index+1}" aria-label="这一组的预设名称"><button data-create-group="${index}">存为人物预设</button>`}<button data-select-group="${index}">选中这组</button></div></article>`;
+}
+function presetCard(preset) {
+  return `<article class="card">${previews(preset.assetIds)}<div class="body"><div class="name">${escapeHtml(preset.name)}</div><div class="meta">${preset.assetIds.length} 张 · 虚拟文件夹</div><button data-filter="preset:${preset.id}">查看照片</button></div></article>`;
+}
+function photo(row) {
+  const status={both:'双方同处检出',disagreement:'检测分歧',neither:'双方未检出'}[row.status];
+  const persons=[...new Set(row.immich.map(f=>f.personLabel))].join('、')||'无';
+  const assigned=data.presets.filter(p=>p.assetIds.includes(row.id)).map(p=>p.name);
+  const decision=current('photo',row.id);
+  const decisionText=choices.photo.find(([value])=>value===decision)?.[1];
+  const review=decision && !editingPhotos.has(row.id)
+    ? `<div class="meta">你已标记：${decisionText} <button data-edit-photo="${row.id}">修改</button></div>`
+    : row.status!=='both' || editingPhotos.has(row.id) ? buttons('photo',row.id) : '';
+  return `<article class="card"><div class="visual"><img loading="lazy" src="${thumb(row.id)}" alt="${escapeHtml(row.name)}"><label class="select-photo"><input type="checkbox" data-select-photo="${row.id}" ${selected.has(row.id)?'checked':''}> 选中</label></div><div class="body"><div class="name">${escapeHtml(row.name)}</div><span class="tag ${row.status}">${status}</span><div class="meta">Immich ${row.immich.length} 张脸 · Vision ${row.vision.length} 张脸<br>Immich 人物：${escapeHtml(persons)}</div>${assigned.length?`<div class="preset-tags">已加入：${escapeHtml(assigned.join('、'))}</div>`:''}${review}</div></article>`;
+}
+function pair(row) {
+  return `<article class="card"><div class="pair"><div><img loading="lazy" src="${thumb(row.aId)}"><small>${escapeHtml(row.a)}</small><small>${escapeHtml(row.aPerson)}</small></div><div><img loading="lazy" src="${thumb(row.bId)}"><small>${escapeHtml(row.b)}</small><small>${escapeHtml(row.bPerson)}</small></div></div><div class="body"><div class="meta">Vision 特征距离 ${row.distance} · 非身份概率</div>${buttons('pair',row.key)}</div></article>`;
+}
+function render() {
+  const c=data.counts||{};
+  $('stats').innerHTML=[['照片',data.imageCount],['已确认候选组',data.confirmedGroups.length],['待判断照片对',data.reviewQueue.length],['检测分歧',c.disagreement||0],['双方未检出',c.neither||0]].map(([k,v])=>`<div class="stat"><strong>${v}</strong>${k}</div>`).join('');
+  $('groups').innerHTML=data.confirmedGroups.length?data.confirmedGroups.map(groupCard).join(''):'<div class="empty">还没有已确认的同一人组。</div>';
+  $('presets').innerHTML=data.presets.length?data.presets.map(presetCard).join(''):'<div class="empty">还没有人物预设。可以给上方已确认的组命名并保存。</div>';
+  const target=$('targetPreset'), previous=target.value;
+  target.innerHTML='<option value="">选择已有预设</option>'+data.presets.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  if(data.presets.some(p=>p.id===previous))target.value=previous;
+  $('selectedCount').textContent=`已选 ${selected.size} 张`;
+  $('filters').innerHTML=Object.entries(labels).map(([key,name])=>`<button class="${filter===key?'active':''}" data-filter="${key}">${name}</button>`).join('');
+  const visible=data.photos.filter(row=>filter==='all'||row.status===filter||
+    (filter.startsWith('preset:')&&data.presets.find(p=>p.id===filter.slice(7))?.assetIds.includes(row.id)));
+  $('photos').innerHTML=visible.map(photo).join('')||'<div class="empty">这个视图里没有照片。</div>';
+  $('pairs').innerHTML=data.reviewQueue.length?data.reviewQueue.map(pair).join(''):'<div class="empty">目前没有需要重复判断的照片对。你之前做的判断都已保留。</div>';
+  const reviewed=data.pairs.filter(row=>current('pair',row.key));
+  $('reviewedTitle').textContent=`查看或修改已做的判断（${reviewed.length} 对）`;
+  $('reviewedPairs').innerHTML=reviewed.map(pair).join('');
+}
+function toast(message) { const el=$('message'); el.textContent=message; el.style.display='block'; setTimeout(()=>el.style.display='none',3000); }
+async function refresh() { const response=await fetch('/api/report'); if(!response.ok)throw Error('无法读取报告'); data=await response.json(); render(); }
+async function presetOp(payload) {
+  const response=await fetch('/api/presets',{method:'POST',headers:{'Content-Type':'application/json','X-Review-Action':'preset'},body:JSON.stringify(payload)});
+  if(!response.ok){const body=await response.json().catch(()=>({}));throw Error(body.error==='duplicate name'?'这个名称已经用过':'保存人物预设失败');}
+  return response.json();
+}
+document.addEventListener('change',e=>{
+  if(!e.target.matches('[data-select-photo]'))return;
+  const id=e.target.dataset.selectPhoto;
+  if(e.target.checked)selected.add(id);else selected.delete(id);
+  $('selectedCount').textContent=`已选 ${selected.size} 张`;
+});
+document.addEventListener('click',async e=>{
+  const button=e.target.closest('button');if(!button||!data)return;
+  if(button.dataset.filter){selected.clear();filter=button.dataset.filter;render();return;}
+  if(button.dataset.editPhoto){editingPhotos.add(button.dataset.editPhoto);render();return;}
+  if(button.id==='clearSelected'){selected.clear();render();return;}
+  if(button.dataset.selectGroup!==undefined){
+    data.confirmedGroups[Number(button.dataset.selectGroup)].assetIds.forEach(id=>selected.add(id));
+    filter='all';render();toast('已选中这一组；可加入现有预设或新建预设');return;
+  }
+  button.disabled=true;
+  try {
+    if(button.dataset.createGroup!==undefined){
+      const index=Number(button.dataset.createGroup), group=data.confirmedGroups[index];
+      const name=document.querySelector(`[data-group-name="${index}"]`).value.trim();
+      if(!name||group.conflict)throw Error('请先填写名称并解决冲突');
+      const result=await presetOp({action:'create',name,assetIds:group.assetIds});
+      filter='preset:'+result.preset.id;await refresh();toast('整组已存入人物预设；原图未移动');return;
+    }
+    if(button.id==='createPreset'){
+      const name=$('presetName').value.trim();if(!name||!selected.size)throw Error('请填写名称并先选中照片');
+      const result=await presetOp({action:'create',name,assetIds:[...selected]});
+      selected.clear();$('presetName').value='';filter='preset:'+result.preset.id;
+      await refresh();toast('人物预设已创建');return;
+    }
+    if(button.id==='addSelected'||button.id==='removeSelected'){
+      const presetId=$('targetPreset').value;if(!presetId||!selected.size)throw Error('请选择预设和照片');
+      await presetOp({action:button.id==='addSelected'?'add':'remove',presetId,assetIds:[...selected]});
+      selected.clear();filter='preset:'+presetId;await refresh();toast('虚拟文件夹已更新；原图未移动');return;
+    }
+    const {kind,key,value}=button.dataset;if(!kind)return;
+    const response=await fetch('/api/decision',{method:'POST',headers:{'Content-Type':'application/json','X-Review-Action':'decision'},body:JSON.stringify({kind,key,value})});
+    if(!response.ok)throw Error('保存判断失败');
+    editingPhotos.delete(key);await refresh();toast('判断已保存；不会自动合并 Immich 人物');
+  }catch(error){toast(error.message)}finally{button.disabled=false}
+});
+refresh().catch(e=>toast(e.message));
+</script>
+</html>

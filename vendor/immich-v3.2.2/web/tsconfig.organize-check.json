@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "$i18n": ["../i18n"],
+      "$i18n/*": ["../i18n/*"],
+      "$lib": ["./src/lib"],
+      "$lib/*": ["./src/lib/*"],
+      "$tests": ["./tests"],
+      "$tests/*": ["./tests/*"],
+      "@test-data": ["./src/test-data"],
+      "@test-data/*": ["./src/test-data/*"],
+      "chromecast-caf-sender": ["./node_modules/@types/chromecast-caf-sender/index.d.ts"]
+    },
+    "rootDirs": ["src", ".svelte-kit/types/src"]
+  },
+  "exclude": ["node_modules"],
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/routes/(user)/organize/**/*.svelte",
+    "src/routes/(user)/organize/**/*.ts",
+    "src/routes/(user)/apple-photos/**/*.svelte",
+    "src/routes/(user)/apple-photos/**/*.ts",
+    "src/routes/(user)/photo-studio/**/*.svelte",
+    "src/lib/components/shared-components/PhotoStudioNavigation.svelte",
+    "src/app.d.ts",
+    ".svelte-kit/ambient.d.ts",
+    ".svelte-kit/non-ambient.d.ts",
+    ".svelte-kit/types/**/$types.d.ts"
+  ]
+}

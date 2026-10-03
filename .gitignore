@@ -1,0 +1,29 @@
+.DS_Store
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Reproducible frontend and native build output lives on T7_1T.
+**/node_modules
+**/.svelte-kit
+**/.vite/
+**/.vite-temp/
+**/web/build/
+**/build/
+**/.swiftpm/
+
+# Local index, credentials, and runtime state never belong in the source repo.
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+.env
+.env.*
+!.env.example
+**/.review-token
+**/.admin-credentials.json
+**/models/
+**/uploads/
+**/photo-cache/
+**/local-state/
